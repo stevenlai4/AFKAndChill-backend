@@ -19,37 +19,40 @@ async function connectToDatabase() {
 exports.handler = async (event, context) => {
     context.callbackWaitsForEmptyEventLoop = false;
     try {
-        const same = await bcrypt.compare(password, user.password)
         const db = await connectToDatabase();
         const user = await db
             .collection('user')
-            .findOne({ name: event.name });
+            .findOne({ email: event.email });
         if (!user) {
             return {
                 stautsCode: 400,
                 body: JSON.stringify({
-                    error: 'Invalid username',
+                    errorMsg: 'Email not found',
                 }),
             };
         }
+        const same = await bcrypt.compare(event.password, user.password)
         if (!same) {
             return {
                 stautsCode: 401,
                 body: JSON.stringify({
-                    error: 'Incorrect Password',
+                    errorMsg: 'Incorrect Password',
                 }),
             };
         }
-        await db.collection('user').findOne({name: event.name});
         return {
             user,
             statusCode: 200,
-            body: 'successfully login',
+            body: JSON.stringfy({
+                successMsg: 'Login successfully'
+            }),
         };
     } catch (err) {
         return {
             statusCode: 500,
-            body: 'error login',
+            body: JSON.stringfy({
+                errorMsg: "Error while login user"
+            }),
         };
     }
 };
