@@ -1,6 +1,5 @@
 const { ObjectID } = require("mongodb");
 const MongoClient = require("mongodb").MongoClient;
-const bcrypt = require("bcryptjs");
 const MONGODB_URI = `mongodb+srv://${process.env.USERNAME}:${process.env.PASSWORD}@cluster0.fmkwb.mongodb.net/AfkAndChillDatabase?retryWrites=true&w=majority`;
 let cachedDb = null;
 async function connectToDatabase() {
@@ -23,17 +22,31 @@ exports.handler = async (event, context) => {
         const db = await connectToDatabase();
         const existedUser = await db
             .collection("user")
-            .findOne({ _id: ObjectID(event.headers.id) });
+            .findOne({ _id: ObjectID(event.headers.userId) });
         if (!existedUser) {
             return {
                 stautsCode: 400,
                 body: JSON.stringify({
-                    error: "User does not exist",
+                    errorMsg: "User does not exist",
+                }),
+            };
+        }
+        //------------
+        // Chat box
+        //-----------
+
+        const existedChatBox = await db
+            .collection("chat")
+            .findOne({ _id: ObjectID(event.headers.chatId) });
+        if (!existedChatBox) {
+            return {
+                stautsCode: 400,
+                body: JSON.stringify({
+                    errorMsg: "Chatbox does not exist",
                 }),
             };
         }
 
-        // const encrypted = await bcrypt.hash(event.password, 12);
         await db.collection("message").insertOne({
             chat_id: event.chatId,
             user_id: event.userId,
@@ -41,12 +54,16 @@ exports.handler = async (event, context) => {
         });
         return {
             statusCode: 200,
-            body: "success",
+            body: JSON.stringify({
+                successMsg: `Success`,
+            }),
         };
     } catch (err) {
         return {
             statusCode: 500,
-            body: "error",
+            body: JSON.stringify({
+                errorMsg: `Error while sending a message`,
+            }),
         };
     }
 };
