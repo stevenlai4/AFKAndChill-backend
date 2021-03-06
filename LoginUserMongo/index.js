@@ -41,17 +41,16 @@ exports.handler = async (event, context) => {
             };
         }
         return {
-            user,
             statusCode: 200,
-            body: JSON.stringfy({
+            body: JSON.stringify({
                 successMsg: 'Login successfully'
             }),
         };
     } catch (err) {
         return {
             statusCode: 500,
-            body: JSON.stringfy({
-                errorMsg: "Error while login user"
+            body: JSON.stringify({
+                errorMsg: `Error while login user: ${err}`
             }),
         };
     }
