@@ -28,7 +28,7 @@ exports.handler = async (event, context) => {
         // Check if chatbox exists
         const existedChatbox = await db
             .collection('chatbox')
-            .findOne({ _id: ObjectId(event.headers.chatId) });
+            .findOne({ _id: ObjectId(event.pathParameters.chatId) });
         if (!existedChatbox) {
             return {
                 stautsCode: 400,
@@ -38,21 +38,26 @@ exports.handler = async (event, context) => {
             };
         }
 
+        // Retrieve message data
         const messages = await db
             .collection('message')
-            .find({ chat_id: ObjectId(existedChatbox._id) });
+            .find({
+                $query: { chat_id: ObjectId(existedChatbox._id) },
+                $orderby: { timestamp: -1 },
+            })
+            .toArray();
 
         return {
             statusCode: 200,
             body: JSON.stringify({
-                messages,
+                messages: messages,
             }),
         };
     } catch (err) {
         return {
             statusCode: 500,
             body: JSON.stringify({
-                errorMsg: 'Error while creating a ',
+                errorMsg: `Error while fetching all messages: ${err}`,
             }),
         };
     }
