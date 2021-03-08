@@ -1,4 +1,4 @@
-const { ObjectID, MongoClient } = require('mongodb');
+const { ObjectId, MongoClient } = require('mongodb');
 const MONGODB_URI = `mongodb+srv://${process.env.USERNAME}:${process.env.PASSWORD}@cluster0.fmkwb.mongodb.net/AfkAndChillDatabase?retryWrites=true&w=majority`;
 
 let cachedDb = null;
@@ -20,20 +20,32 @@ async function connectToDatabase() {
 
 exports.handler = async (event, context) => {
     context.callbackWaitsForEmptyEventLoop = false;
-    const { userOneId, userTwoId } = event.headers;
+    let userOneId = '';
+    let userTwoId = '';
 
     try {
         // Connect to the database
         const db = await connectToDatabase();
 
+        // Make sure event.headers have the values for user one and two
+        if (event.headers) {
+            if (event.headers.userOneId && event.headers.userOneId != '') {
+                userOneId = event.headers.userOneId;
+            }
+
+            if (event.headers.userTwoId && event.headers.userTwoId != '') {
+                userTwoId = event.headers.userTwoId;
+            }
+        }
+
         // Check if the first user exists
         const firstExistedUser = await db
             .collection('user')
-            .findOne({ _id: ObjectID(userOneId) });
+            .findOne({ _id: ObjectId(userOneId) });
         // Check if the second user exists
         const secondExistedUser = await db
             .collection('user')
-            .findOne({ _id: ObjectID(userTwoId) });
+            .findOne({ _id: ObjectId(userTwoId) });
 
         if (!firstExistedUser || !secondExistedUser) {
             return {
@@ -46,8 +58,8 @@ exports.handler = async (event, context) => {
 
         // Insert a data to chatbox schema
         await db.collection('chatbox').insertOne({
-            user_one: ObjectID(userOneId),
-            user_two: ObjectID(userTwoId),
+            user_one: firstExistedUser._id,
+            user_two: secondExistedUser._id,
         });
 
         return {
