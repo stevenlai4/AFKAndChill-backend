@@ -1,5 +1,4 @@
-const { ObjectID } = require("mongodb");
-const MongoClient = require("mongodb").MongoClient;
+const { ObjectId, MongoClient } = require("mongodb");
 const MONGODB_URI = `mongodb+srv://${process.env.USERNAME}:${process.env.PASSWORD}@cluster0.fmkwb.mongodb.net/AfkAndChillDatabase?retryWrites=true&w=majority`;
 let cachedDb = null;
 async function connectToDatabase() {
@@ -20,9 +19,10 @@ exports.handler = async (event, context) => {
     context.callbackWaitsForEmptyEventLoop = false;
     try {
         const db = await connectToDatabase();
+        // Check if the user exists
         const existedUser = await db
             .collection("user")
-            .findOne({ _id: ObjectID(event.headers.userId) });
+            .findOne({ _id: ObjectId(event.headers.userId) });
         if (!existedUser) {
             return {
                 stautsCode: 400,
@@ -31,13 +31,10 @@ exports.handler = async (event, context) => {
                 }),
             };
         }
-        //------------
-        // Chat box
-        //-----------
-
+        // Check if the chatbox exists
         const existedChatBox = await db
-            .collection("chat")
-            .findOne({ _id: ObjectID(event.headers.chatId) });
+            .collection("chatbox")
+            .findOne({ _id: ObjectId(event.pathParameters.chatId) });
         if (!existedChatBox) {
             return {
                 stautsCode: 400,
@@ -46,11 +43,11 @@ exports.handler = async (event, context) => {
                 }),
             };
         }
-
         await db.collection("message").insertOne({
-            chat_id: event.chatId,
-            user_id: event.userId,
-            time_stamp: new Date(),
+            chat_id: ObjectId(existedChatBox._id),
+            user_id: ObjectId(existedUser._id),
+            message: JSON.parse(event.body).message,
+            timestamp: Date.now(),
         });
         return {
             statusCode: 200,
@@ -62,7 +59,7 @@ exports.handler = async (event, context) => {
         return {
             statusCode: 500,
             body: JSON.stringify({
-                errorMsg: `Error while sending a message`,
+                errorMsg: `Error while sending a message: ${err}`,
             }),
         };
     }
