@@ -5,7 +5,7 @@ async function connectToDatabase() {
     if (cachedDb) {
         return cachedDb;
     }
-    // Connect to our MongoDB database hosted on MongoDB Atlas
+    // Connect to our MongoDB database hosted on MongoDB Atlas...
     const client = await MongoClient(MONGODB_URI, {
         useUnifiedTopology: true,
         useNewUrlParser: true,
