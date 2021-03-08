@@ -1,5 +1,4 @@
-const MongoClient = require('mongodb').MongoClient;
-const { ObjectID } = require('mongodb');
+const { ObjectID, MongoClient } = require('mongodb');
 const MONGODB_URI = `mongodb+srv://${process.env.USERNAME}:${process.env.PASSWORD}@cluster0.fmkwb.mongodb.net/AfkAndChillDatabase?retryWrites=true&w=majority`;
 
 let cachedDb = null;
