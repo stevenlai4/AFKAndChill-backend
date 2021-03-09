@@ -1,4 +1,5 @@
 const { MongoClient } = require('mongodb');
+const jwt = require('jsonwebtoken');
 const MONGODB_URI = `mongodb+srv://${process.env.USERNAME}:${process.env.PASSWORD}@cluster0.fmkwb.mongodb.net/AfkAndChillDatabase?retryWrites=true&w=majority`;
 
 let cachedDb = null;
