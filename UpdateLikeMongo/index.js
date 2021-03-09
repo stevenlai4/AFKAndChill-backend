@@ -30,10 +30,10 @@ const vertifyToken = (token) => {
 
 exports.handler = async (event, context) => {
     context.callbackWaitsForEmptyEventLoop = false;
-    const { token, userTwoId } = event.headers;
+    const { access_token, userTwoId } = event.headers;
 
     // Verify the jwt token
-    if (!vertifyToken(token)) {
+    if (!vertifyToken(access_token)) {
         return {
             statusCode: 403,
             body: JSON.stringify({
@@ -42,27 +42,28 @@ exports.handler = async (event, context) => {
         };
     }
 
-    try {
-        // Connect to the database
-        const db = await connectToDatabase();
+    return jwt.verify(access_token, 'secret', async (err, authData) => {
+        // Throw error if token not matched
+        if (err) {
+            return {
+                statusCode: 403,
+                body: JSON.stringify({
+                    errorMsg: 'Token not matched',
+                }),
+            };
+        }
 
-        return jwt.verify(token, 'secret', async (err, authData) => {
-            if (err) {
-                return {
-                    statusCode: 403,
-                    body: JSON.stringify({
-                        errorMsg: 'Token not matched',
-                    }),
-                };
-            }
+        try {
+            // Connect to the database
+            const db = await connectToDatabase();
 
             // Check if both users exist
             const firstExistedUser = await db
                 .collection('user')
-                .findOne({ cognito_id: authData.client_id });
+                .findOne({ cognito_id: authData.sub });
             const secondExistedUser = await db
                 .collection('user')
-                .findOne({ _id: userTwoId });
+                .findOne({ _id: ObjectId(userTwoId) });
             if (!firstExistedUser && !secondExistedUser) {
                 return {
                     statusCode: 400,
@@ -97,55 +98,37 @@ exports.handler = async (event, context) => {
                     }),
                 };
             }
-        });
 
-        // Make sure event.headers have the values for user one and two
-        if (event.headers) {
-            if (event.headers.userOneId && event.headers.userOneId != '') {
-                userOneId = event.headers.userOneId;
+            // Insert second user id into first user likes array
+            await db
+                .collection('user')
+                .findOneAndUpdate(
+                    { _id: firstExistedUser._id },
+                    { $push: { likes: secondExistedUser._id } }
+                );
+
+            // Check if both users like each other
+            // If YES then create a chatbox for them
+            if (secondExistedUser.likes.includes(firstExistedUser._id)) {
+                await db.collection('chatbox').insertOne({
+                    user_one: firstExistedUser._id,
+                    user_two: secondExistedUser._id,
+                });
             }
 
-            if (event.headers.userTwoId && event.headers.userTwoId != '') {
-                userTwoId = event.headers.userTwoId;
-            }
-        }
-
-        // Check if the first user exists
-        const firstExistedUser = await db
-            .collection('user')
-            .findOne({ _id: ObjectId(userOneId) });
-        // Check if the second user exists
-        const secondExistedUser = await db
-            .collection('user')
-            .findOne({ _id: ObjectId(userTwoId) });
-
-        if (!firstExistedUser || !secondExistedUser) {
             return {
-                stautsCode: 400,
+                statusCode: 200,
                 body: JSON.stringify({
-                    errorMsg: 'User/Users not exist',
+                    successMsg: 'User likes successfully',
+                }),
+            };
+        } catch (err) {
+            return {
+                statusCode: 500,
+                body: JSON.stringify({
+                    errorMsg: `Error while likes a user: ${err}`,
                 }),
             };
         }
-
-        // Insert a data to chatbox schema
-        await db.collection('chatbox').insertOne({
-            user_one: firstExistedUser._id,
-            user_two: secondExistedUser._id,
-        });
-
-        return {
-            statusCode: 200,
-            body: JSON.stringify({
-                successMsg: 'Chatbox successfully created',
-            }),
-        };
-    } catch (err) {
-        return {
-            statusCode: 500,
-            body: JSON.stringify({
-                errorMsg: `Error while creating a chatbox: ${err}`,
-            }),
-        };
-    }
+    });
 };
