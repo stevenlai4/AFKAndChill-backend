@@ -1,4 +1,5 @@
 const { MongoClient } = require('mongodb');
+const jwt_decode = require('jwt-decode');
 const MONGODB_URI = `mongodb+srv://${process.env.USERNAME}:${process.env.PASSWORD}@cluster0.fmkwb.mongodb.net/AfkAndChillDatabase?retryWrites=true&w=majority`;
 
 let cachedDb = null;
@@ -18,20 +19,45 @@ async function connectToDatabase() {
     return db;
 }
 
+// Verify if the token is undefied or not
+const vertifyToken = (token) => {
+    if (typeof token !== 'undefined') {
+        return true;
+    }
+
+    return false;
+};
+
 exports.handler = async (event, context) => {
     context.callbackWaitsForEmptyEventLoop = false;
+    const { Authorization } = event.headers;
+
+    // Verify the jwt token
+    // Return status code 403 if the token is undefiend
+    if (!vertifyToken(Authorization)) {
+        return {
+            statusCode: 403,
+            body: JSON.stringify({
+                errorMsg: 'Token is undefined',
+            }),
+        };
+    }
 
     try {
         // Connect to mongodb database
         const db = await connectToDatabase();
 
+        // Decode the token
+        const tokenData = await jwt_decode(Authorization);
+
         // Check if user already exists
+        // If not then return status code 400
         const existedUser = await db
             .collection('user')
-            .findOne({ cognito_id: event.headers.cognitoId });
+            .findOne({ cognito_id: tokenData.sub });
         if (existedUser) {
             return {
-                stautsCode: 400,
+                statusCode: 400,
                 body: JSON.stringify({
                     errorMsg: 'User already exists',
                 }),
@@ -42,7 +68,7 @@ exports.handler = async (event, context) => {
 
         // Insert a new user to the user table
         await db.collection('user').insertOne({
-            cognito_id: event.headers.cognitoId,
+            cognito_id: tokenData.sub,
             photo_url: body.photoUrl,
             gender: body.gender,
             genderPref: body.genderPref,
@@ -61,7 +87,7 @@ exports.handler = async (event, context) => {
         return {
             statusCode: 500,
             body: JSON.stringify({
-                errorMsg: `Error while creating a user: ${err}`,
+                errorMsg: `Error while creating a new user: ${err}`,
             }),
         };
     }
