@@ -1,5 +1,5 @@
 const { ObjectId, MongoClient } = require('mongodb');
-const jwt = require('jsonwebtoken');
+const jwt_decode = require('jwt-decode');
 const MONGODB_URI = `mongodb+srv://${process.env.USERNAME}:${process.env.PASSWORD}@cluster0.fmkwb.mongodb.net/AfkAndChillDatabase?retryWrites=true&w=majority`;
 
 let cachedDb = null;
@@ -30,10 +30,10 @@ const vertifyToken = (token) => {
 
 exports.handler = async (event, context) => {
     context.callbackWaitsForEmptyEventLoop = false;
-    const { access_token, userTwoId } = event.headers;
+    const { Authorization, userTwoId } = event.headers;
 
     // Verify the jwt token
-    if (!vertifyToken(access_token)) {
+    if (!vertifyToken(Authorization)) {
         return {
             statusCode: 403,
             body: JSON.stringify({
@@ -42,93 +42,82 @@ exports.handler = async (event, context) => {
         };
     }
 
-    return jwt.verify(access_token, 'secret', async (err, authData) => {
-        // Throw error if token not matched
-        if (err) {
+    try {
+        // Connect to the database
+        const db = await connectToDatabase();
+
+        // Decode the token
+        const tokenData = await jwt_decode(Authorization);
+
+        // Check if both users exist
+        const firstExistedUser = await db
+            .collection('user')
+            .findOne({ cognito_id: tokenData.sub });
+        const secondExistedUser = await db
+            .collection('user')
+            .findOne({ _id: ObjectId(userTwoId) });
+        if (!firstExistedUser && !secondExistedUser) {
             return {
-                statusCode: 403,
+                statusCode: 400,
                 body: JSON.stringify({
-                    errorMsg: 'Token not matched',
+                    errorMsg: 'User/Users does not exist',
                 }),
             };
         }
 
-        try {
-            // Connect to the database
-            const db = await connectToDatabase();
-
-            // Check if both users exist
-            const firstExistedUser = await db
-                .collection('user')
-                .findOne({ cognito_id: authData.sub });
-            const secondExistedUser = await db
-                .collection('user')
-                .findOne({ _id: ObjectId(userTwoId) });
-            if (!firstExistedUser && !secondExistedUser) {
-                return {
-                    statusCode: 400,
-                    body: JSON.stringify({
-                        errorMsg: 'User/Users does not exist',
-                    }),
-                };
-            }
-
-            // Check if user one already liked/disliked user two
-            // Check liked
-            const isLiked = firstExistedUser.likes.includes(
-                secondExistedUser._id
-            );
-            if (isLiked) {
-                return {
-                    statusCode: 400,
-                    body: JSON.stringify({
-                        errorMsg: 'User is already being liked',
-                    }),
-                };
-            }
-            // Check disliked
-            const isDisliked = firstExistedUser.dislikes.includes(
-                secondExistedUser._id
-            );
-            if (isDisliked) {
-                return {
-                    statusCode: 400,
-                    body: JSON.stringify({
-                        errorMsg: 'User is already being disliked',
-                    }),
-                };
-            }
-
-            // Insert second user id into first user likes array
-            await db
-                .collection('user')
-                .findOneAndUpdate(
-                    { _id: firstExistedUser._id },
-                    { $push: { likes: secondExistedUser._id } }
-                );
-
-            // Check if both users like each other
-            // If YES then create a chatbox for them
-            if (secondExistedUser.likes.includes(firstExistedUser._id)) {
-                await db.collection('chatbox').insertOne({
-                    user_one: firstExistedUser._id,
-                    user_two: secondExistedUser._id,
-                });
-            }
-
+        // Check if user one already liked/disliked user two
+        // Check liked
+        const isLiked = firstExistedUser.likes.includes(secondExistedUser._id);
+        if (isLiked) {
             return {
-                statusCode: 200,
+                statusCode: 400,
                 body: JSON.stringify({
-                    successMsg: 'User likes successfully',
-                }),
-            };
-        } catch (err) {
-            return {
-                statusCode: 500,
-                body: JSON.stringify({
-                    errorMsg: `Error while likes a user: ${err}`,
+                    errorMsg: 'User is already being liked',
                 }),
             };
         }
-    });
+        // Check disliked
+        const isDisliked = firstExistedUser.dislikes.includes(
+            secondExistedUser._id
+        );
+        if (isDisliked) {
+            return {
+                statusCode: 400,
+                body: JSON.stringify({
+                    errorMsg: 'User is already being disliked',
+                }),
+            };
+        }
+
+        // Insert second user id into first user likes array
+        await db
+            .collection('user')
+            .findOneAndUpdate(
+                { _id: firstExistedUser._id },
+                { $push: { likes: secondExistedUser._id } }
+            );
+
+        // Check if both users like each other
+        // If YES then create a chatbox for them
+        if (secondExistedUser.likes.includes(firstExistedUser._id)) {
+            await db.collection('chatbox').insertOne({
+                user_one: firstExistedUser._id,
+                user_two: secondExistedUser._id,
+            });
+        }
+
+        return {
+            statusCode: 200,
+            body: JSON.stringify({
+                successMsg: 'User likes successfully',
+            }),
+        };
+    } catch (err) {
+        return {
+            statusCode: 500,
+            body: JSON.stringify({
+                errorMsg: `Error while likes a user: ${err}`,
+            }),
+        };
+    }
 };
