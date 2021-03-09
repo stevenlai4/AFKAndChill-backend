@@ -1,5 +1,5 @@
 const { MongoClient } = require('mongodb');
-const jwt = require('jsonwebtoken');
+const jwt_decode = require('jwt-decode');
 const MONGODB_URI = `mongodb+srv://${process.env.USERNAME}:${process.env.PASSWORD}@cluster0.fmkwb.mongodb.net/AfkAndChillDatabase?retryWrites=true&w=majority`;
 
 let cachedDb = null;
@@ -30,10 +30,11 @@ const vertifyToken = (token) => {
 
 exports.handler = async (event, context) => {
     context.callbackWaitsForEmptyEventLoop = false;
-    const { id_token } = event.headers;
+    const { Authorization } = event.headers;
 
     // Verify the jwt token
-    if (!vertifyToken(id_token)) {
+    // Return status code 403 if the token is undefiend
+    if (!vertifyToken(Authorization)) {
         return {
             statusCode: 403,
             body: JSON.stringify({
@@ -42,60 +43,52 @@ exports.handler = async (event, context) => {
         };
     }
 
-    return jwt.verify(id_token, 'secret', async (err, authData) => {
-        // Throw error if token not matched
-        if (err) {
+    try {
+        // Connect to mongodb database
+        const db = await connectToDatabase();
+
+        // Decode the token
+        const tokenData = await jwt_decode(Authorization);
+
+        // Check if user already exists
+        // If not then return status code 400
+        const existedUser = await db
+            .collection('user')
+            .findOne({ cognito_id: tokenData.sub });
+        if (existedUser) {
             return {
-                statusCode: 403,
+                statusCode: 400,
                 body: JSON.stringify({
-                    errorMsg: 'Token not matched',
+                    errorMsg: 'User already exists',
                 }),
             };
         }
 
-        try {
-            // Connect to mongodb database
-            const db = await connectToDatabase();
+        const body = JSON.parse(event.body);
 
-            // Check if user already exists
-            const existedUser = await db
-                .collection('user')
-                .findOne({ cognito_id: authData.sub });
-            if (existedUser) {
-                return {
-                    stautsCode: 400,
-                    body: JSON.stringify({
-                        errorMsg: 'User already exists',
-                    }),
-                };
-            }
+        // Insert a new user to the user table
+        await db.collection('user').insertOne({
+            cognito_id: tokenData.sub,
+            photo_url: body.photoUrl,
+            gender: body.gender,
+            genderPref: body.genderPref,
+            games: body.games,
+            likes: [],
+            dislikes: [],
+        });
 
-            const body = JSON.parse(event.body);
-
-            // Insert a new user to the user table
-            await db.collection('user').insertOne({
-                cognito_id: authData.sub,
-                photo_url: body.photoUrl,
-                gender: body.gender,
-                genderPref: body.genderPref,
-                games: body.games,
-                likes: [],
-                dislikes: [],
-            });
-
-            return {
-                statusCode: 200,
-                body: JSON.stringify({
-                    successMsg: 'Create user successfully',
-                }),
-            };
-        } catch (err) {
-            return {
-                statusCode: 500,
-                body: JSON.stringify({
-                    errorMsg: `Error while creating a user: ${err}`,
-                }),
-            };
-        }
-    });
+        return {
+            statusCode: 200,
+            body: JSON.stringify({
+                successMsg: 'Create user successfully',
+            }),
+        };
+    } catch (err) {
+        return {
+            statusCode: 500,
+            body: JSON.stringify({
+                errorMsg: `Error while creating a new user: ${err}`,
+            }),
+        };
+    }
 };
