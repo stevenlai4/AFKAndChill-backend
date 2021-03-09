@@ -19,51 +19,83 @@ async function connectToDatabase() {
     return db;
 }
 
+// Verify if the token is undefied or not
+const vertifyToken = (token) => {
+    if (typeof token !== 'undefined') {
+        return true;
+    }
+
+    return false;
+};
+
 exports.handler = async (event, context) => {
     context.callbackWaitsForEmptyEventLoop = false;
+    const { id_token } = event.headers;
 
-    try {
-        // Connect to mongodb database
-        const db = await connectToDatabase();
+    // Verify the jwt token
+    if (!vertifyToken(id_token)) {
+        return {
+            statusCode: 403,
+            body: JSON.stringify({
+                errorMsg: 'Token is undefined',
+            }),
+        };
+    }
 
-        // Check if user already exists
-        const existedUser = await db
-            .collection('user')
-            .findOne({ cognito_id: event.headers.cognitoId });
-        if (existedUser) {
+    return jwt.verify(id_token, 'secret', async (err, authData) => {
+        // Throw error if token not matched
+        if (err) {
             return {
-                stautsCode: 400,
+                statusCode: 403,
                 body: JSON.stringify({
-                    errorMsg: 'User already exists',
+                    errorMsg: 'Token not matched',
                 }),
             };
         }
 
-        const body = JSON.parse(event.body);
+        try {
+            // Connect to mongodb database
+            const db = await connectToDatabase();
 
-        // Insert a new user to the user table
-        await db.collection('user').insertOne({
-            cognito_id: event.headers.cognitoId,
-            photo_url: body.photoUrl,
-            gender: body.gender,
-            genderPref: body.genderPref,
-            games: body.games,
-            likes: [],
-            dislikes: [],
-        });
+            // Check if user already exists
+            const existedUser = await db
+                .collection('user')
+                .findOne({ cognito_id: authData.sub });
+            if (existedUser) {
+                return {
+                    stautsCode: 400,
+                    body: JSON.stringify({
+                        errorMsg: 'User already exists',
+                    }),
+                };
+            }
 
-        return {
-            statusCode: 200,
-            body: JSON.stringify({
-                successMsg: 'Create user successfully',
-            }),
-        };
-    } catch (err) {
-        return {
-            statusCode: 500,
-            body: JSON.stringify({
-                errorMsg: `Error while creating a user: ${err}`,
-            }),
-        };
-    }
+            const body = JSON.parse(event.body);
+
+            // Insert a new user to the user table
+            await db.collection('user').insertOne({
+                cognito_id: authData.sub,
+                photo_url: body.photoUrl,
+                gender: body.gender,
+                genderPref: body.genderPref,
+                games: body.games,
+                likes: [],
+                dislikes: [],
+            });
+
+            return {
+                statusCode: 200,
+                body: JSON.stringify({
+                    successMsg: 'Create user successfully',
+                }),
+            };
+        } catch (err) {
+            return {
+                statusCode: 500,
+                body: JSON.stringify({
+                    errorMsg: `Error while creating a user: ${err}`,
+                }),
+            };
+        }
+    });
 };
