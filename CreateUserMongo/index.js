@@ -43,10 +43,12 @@ exports.handler = async (event, context) => {
         // Insert a new user to the user table
         await db.collection('user').insertOne({
             cognito_id: event.headers.cognitoId,
+            photo_url: body.photoUrl,
             gender: body.gender,
             genderPref: body.genderPref,
             games: body.games,
-            chillers: [],
+            likes: [],
+            dislikes: [],
         });
 
         return {
