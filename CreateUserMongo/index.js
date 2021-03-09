@@ -1,5 +1,4 @@
-const MongoClient = require('mongodb').MongoClient;
-const bcrypt = require('bcryptjs');
+const { MongoClient } = require('mongodb');
 const MONGODB_URI = `mongodb+srv://${process.env.USERNAME}:${process.env.PASSWORD}@cluster0.fmkwb.mongodb.net/AfkAndChillDatabase?retryWrites=true&w=majority`;
 
 let cachedDb = null;
@@ -23,29 +22,30 @@ exports.handler = async (event, context) => {
     context.callbackWaitsForEmptyEventLoop = false;
 
     try {
+        // Connect to mongodb database
         const db = await connectToDatabase();
 
+        // Check if user already exists
         const existedUser = await db
             .collection('user')
-            .findOne({ email: event.email });
+            .findOne({ cognito_id: event.headers.cognitoId });
         if (existedUser) {
             return {
                 stautsCode: 400,
                 body: JSON.stringify({
-                    errorMsg: 'Email already exists',
+                    errorMsg: 'User already exists',
                 }),
             };
         }
 
-        const encrypted = await bcrypt.hash(event.password, 12);
+        const body = JSON.parse(event.body);
 
+        // Insert a new user to the user table
         await db.collection('user').insertOne({
-            name: event.name,
-            email: event.email,
-            password: encrypted,
-            gender: event.gender,
-            genderPref: event.genderPref,
-            games: event.games,
+            cognito_id: event.headers.cognitoId,
+            gender: body.gender,
+            genderPref: body.genderPref,
+            games: body.games,
             chillers: [],
         });
 
@@ -59,7 +59,7 @@ exports.handler = async (event, context) => {
         return {
             statusCode: 500,
             body: JSON.stringify({
-                errorMsg: 'Error while creating a ',
+                errorMsg: `Error while creating a user: ${err}`,
             }),
         };
     }
