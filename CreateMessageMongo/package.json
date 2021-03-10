@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/BCIT-SSD-2020-21/server-side-code-team1#readme",
   "dependencies": {
+    "jwt-decode": "^3.1.2",
     "mongodb": "^3.6.4"
   }
 }
