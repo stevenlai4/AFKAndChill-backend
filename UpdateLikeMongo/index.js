@@ -56,7 +56,7 @@ exports.handler = async (event, context) => {
         const secondExistedUser = await db
             .collection('user')
             .findOne({ _id: ObjectId(userTwoId) });
-        if (!firstExistedUser && !secondExistedUser) {
+        if (!firstExistedUser || !secondExistedUser) {
             return {
                 statusCode: 400,
                 body: JSON.stringify({
@@ -67,7 +67,10 @@ exports.handler = async (event, context) => {
 
         // Check if user one already liked/disliked user two
         // Check liked
-        const isLiked = firstExistedUser.likes.includes(secondExistedUser._id);
+        const isLiked = await db.collection('user').findOne({
+            _id: firstExistedUser._id,
+            likes: { $in: [secondExistedUser._id] },
+        });
         if (isLiked) {
             return {
                 statusCode: 400,
@@ -77,9 +80,10 @@ exports.handler = async (event, context) => {
             };
         }
         // Check disliked
-        const isDisliked = firstExistedUser.dislikes.includes(
-            secondExistedUser._id
-        );
+        const isDisliked = await db.collection('user').findOne({
+            _id: firstExistedUser._id,
+            dislikes: { $in: [secondExistedUser._id] },
+        });
         if (isDisliked) {
             return {
                 statusCode: 400,
@@ -99,7 +103,11 @@ exports.handler = async (event, context) => {
 
         // Check if both users like each other
         // If YES then create a chatbox for them
-        if (secondExistedUser.likes.includes(firstExistedUser._id)) {
+        const isLikedBySecondUser = await db.collection('user').findOne({
+            _id: secondExistedUser._id,
+            likes: { $in: [firstExistedUser._id] },
+        });
+        if (isLikedBySecondUser) {
             await db.collection('chatbox').insertOne({
                 user_one: firstExistedUser._id,
                 user_two: secondExistedUser._id,
