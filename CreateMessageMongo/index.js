@@ -54,7 +54,7 @@ exports.handler = async (event, context) => {
             .findOne({ cognito_id: tokenData.sub });
         if (!existedUser) {
             return {
-                stautsCode: 400,
+                statusCode: 400,
                 body: JSON.stringify({
                     errorMsg: 'User does not exist',
                 }),
@@ -67,7 +67,7 @@ exports.handler = async (event, context) => {
             .findOne({ _id: ObjectId(chatboxId) });
         if (!existedChatBox) {
             return {
-                stautsCode: 400,
+                statusCode: 400,
                 body: JSON.stringify({
                     errorMsg: 'Chatbox does not exist',
                 }),
