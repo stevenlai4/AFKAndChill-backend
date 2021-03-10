@@ -20,6 +20,7 @@ async function connectToDatabase() {
 
 exports.handler = async (event, context) => {
     context.callbackWaitsForEmptyEventLoop = false;
+    const { chatboxId } = event.pathParameters;
 
     try {
         // Connect to the database
@@ -28,10 +29,10 @@ exports.handler = async (event, context) => {
         // Check if chatbox exists
         const existedChatbox = await db
             .collection('chatbox')
-            .findOne({ _id: ObjectId(event.pathParameters.chatId) });
+            .findOne({ _id: ObjectId(chatboxId) });
         if (!existedChatbox) {
             return {
-                stautsCode: 400,
+                statusCode: 400,
                 body: JSON.stringify({
                     errorMsg: 'Checkbox does not exist',
                 }),
