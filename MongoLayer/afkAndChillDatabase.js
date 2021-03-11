@@ -1,4 +1,4 @@
-const { MongoClient } = require('mongodb');
+const { MongoClient, ObjectId } = require('mongodb');
 
 module.exports = async function () {
     // MongoDB Atalas connection string
@@ -153,9 +153,67 @@ module.exports = async function () {
         }
     }
 
+    // Create a new message
+    async function createMessage({ userId, chatboxId, message }) {
+        try {
+            // Check if the user exists
+            const existedUser = await users.findOne({ cognito_id: userId });
+            if (!existedUser) {
+                throw 'User does not exist';
+            }
+
+            // Check if the chatbox exists
+            const existedChatBox = await chatboxes.findOne({
+                _id: ObjectId(chatboxId),
+            });
+            if (!existedChatBox) {
+                throw 'Chatbox does not exist';
+            }
+
+            // Create a new message
+            await messages.insertOne({
+                chat_id: existedChatBox._id,
+                user_id: userId,
+                message,
+                timestamp: Date.now(),
+            });
+
+            return;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // Get all messages
+    async function getAllMessages({ chatboxId }) {
+        try {
+            // Check if chatbox exists
+            const existedChatbox = await chatboxes.findOne({
+                _id: ObjectId(chatboxId),
+            });
+            if (!existedChatbox) {
+                throw 'Checkbox does not exist';
+            }
+
+            // Retrieve message data
+            const response = await messages
+                .find({
+                    $query: { chat_id: ObjectId(existedChatbox._id) },
+                    $orderby: { timestamp: -1 },
+                })
+                .toArray();
+
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    }
+
     return {
         createUser,
         updateLike,
         updateDislike,
+        createMessage,
+        getAllMessages,
     };
 };
