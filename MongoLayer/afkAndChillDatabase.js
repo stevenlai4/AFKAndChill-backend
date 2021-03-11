@@ -109,8 +109,53 @@ module.exports = async function () {
         }
     }
 
+    // Update dislike function
+    async function updateDislike({ userOneId, userTwoId }) {
+        try {
+            // Check if both users exist
+            const firstExistedUser = await users.findOne({
+                cognito_id: userOneId,
+            });
+            const secondExistedUser = await users.findOne({
+                cognito_id: userTwoId,
+            });
+            if (!firstExistedUser || !secondExistedUser) {
+                throw 'User/Users does not exist';
+            }
+
+            // Check if user one already liked/disliked user two
+            // Check liked
+            const isLiked = await users.findOne({
+                cognito_id: userOneId,
+                likes: { $in: [userTwoId] },
+            });
+            if (isLiked) {
+                throw 'User is already being liked';
+            }
+            // Check disliked
+            const isDisliked = await users.findOne({
+                cognito_id: userOneId,
+                dislikes: { $in: [userTwoId] },
+            });
+            if (isDisliked) {
+                throw 'User is already being disliked';
+            }
+
+            // Insert second user id into first user likes array
+            await users.findOneAndUpdate(
+                { cognito_id: userOneId },
+                { $push: { dislikes: userTwoId } }
+            );
+
+            return;
+        } catch (error) {
+            throw error;
+        }
+    }
+
     return {
         createUser,
         updateLike,
+        updateDislike,
     };
 };
