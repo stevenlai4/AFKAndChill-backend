@@ -209,11 +209,46 @@ module.exports = async function () {
         }
     }
 
+    // Get all matchable chillers
+    async function getChillers({ userId }) {
+        try {
+            // Check if the user exists
+            const existedUser = await users.findOne({
+                cognito_id: userId,
+            });
+            if (!existedUser) {
+                throw 'User does not exist';
+            }
+
+            // Find all the chillers that are matchable with the user
+            // - Chiller's id should not be the same as the user's id
+            // - Chiller's id should not already existed in the user's likes/dislikes arrays
+            // - Chiller's gender must match user's gender preference
+            // - One of chiller's game must match user's game list item
+            const response = await users
+                .find({
+                    $and: [
+                        { cognito_id: { $ne: existedUser.cognito_id } },
+                        { cognito_id: { $nin: existedUser.likes } },
+                        { cognito_id: { $nin: existedUser.dislikes } },
+                        { gender: existedUser.gender_pref },
+                        { games: { $elemMatch: { $in: existedUser.games } } },
+                    ],
+                })
+                .toArray();
+
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    }
+
     return {
         createUser,
         updateLike,
         updateDislike,
         createMessage,
         getAllMessages,
+        getChillers,
     };
 };
