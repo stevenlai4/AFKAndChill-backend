@@ -52,6 +52,45 @@ module.exports = async function () {
         }
     }
 
+    // Update user function
+    async function updateUser({
+        userId,
+        userName,
+        photoUrl,
+        about,
+        gender,
+        genderPref,
+        games,
+    }) {
+        try {
+            // Check if the user exists
+            const existedUser = await users.findOne({ cognito_id: userId });
+            if (!existedUser) {
+                throw 'User does not exist';
+            }
+
+            // Update object
+            const update = {
+                name: userName,
+                photo_url: photoUrl,
+                about,
+                gender,
+                gender_pref: genderPref,
+                games,
+            };
+
+            // Update the user info
+            await users.findOneAndUpdate(
+                { cognito_id: userId },
+                { $set: update }
+            );
+
+            return;
+        } catch (error) {
+            throw error;
+        }
+    }
+
     // Update like function
     async function updateLike({ userOneId, userTwoId }) {
         try {
@@ -153,7 +192,7 @@ module.exports = async function () {
         }
     }
 
-    // Create a new message
+    // Create a new message function
     async function createMessage({ userId, chatboxId, message }) {
         try {
             // Check if the user exists
@@ -184,7 +223,7 @@ module.exports = async function () {
         }
     }
 
-    // Get all messages
+    // Get all messages function
     async function getAllMessages({ chatboxId }) {
         try {
             // Check if chatbox exists
@@ -209,7 +248,7 @@ module.exports = async function () {
         }
     }
 
-    // Get all matchable chillers
+    // Get all matchable chillers function
     async function getChillers({ userId }) {
         try {
             // Check if the user exists
@@ -243,6 +282,30 @@ module.exports = async function () {
         }
     }
 
+    // Get all chatboxes for the user function
+    async function getChatboxes({ userId }) {
+        try {
+            // Check if the user exists
+            const existedUser = await users.findOne({
+                cognito_id: userId,
+            });
+            if (!existedUser) {
+                throw 'User does not exist';
+            }
+
+            // Fetching all chatboxes for the user
+            const response = await chatboxes
+                .find({
+                    $or: [{ user_one: userId }, { user_two: userId }],
+                })
+                .toArray();
+
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    }
+
     return {
         createUser,
         updateLike,
@@ -250,5 +313,7 @@ module.exports = async function () {
         createMessage,
         getAllMessages,
         getChillers,
+        getChatboxes,
+        updateUser,
     };
 };
