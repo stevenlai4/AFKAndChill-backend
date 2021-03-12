@@ -52,6 +52,7 @@ module.exports = async function () {
         }
     }
 
+    // Update user function
     async function updateUser({
         userId,
         userName,
@@ -191,7 +192,7 @@ module.exports = async function () {
         }
     }
 
-    // Create a new message
+    // Create a new message function
     async function createMessage({ userId, chatboxId, message }) {
         try {
             // Check if the user exists
@@ -222,7 +223,7 @@ module.exports = async function () {
         }
     }
 
-    // Get all messages
+    // Get all messages function
     async function getAllMessages({ chatboxId }) {
         try {
             // Check if chatbox exists
@@ -247,7 +248,7 @@ module.exports = async function () {
         }
     }
 
-    // Get all matchable chillers
+    // Get all matchable chillers function
     async function getChillers({ userId }) {
         try {
             // Check if the user exists
@@ -281,7 +282,7 @@ module.exports = async function () {
         }
     }
 
-    // Get all chatboxes for the user
+    // Get all chatboxes for the user function
     async function getChatboxes({ userId }) {
         try {
             // Check if the user exists
