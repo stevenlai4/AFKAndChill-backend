@@ -52,6 +52,44 @@ module.exports = async function () {
         }
     }
 
+    async function updateUser({
+        userId,
+        userName,
+        photoUrl,
+        about,
+        gender,
+        genderPref,
+        games,
+    }) {
+        try {
+            // Check if the user exists
+            const existedUser = await users.findOne({ cognito_id: userId });
+            if (!existedUser) {
+                throw 'User does not exist';
+            }
+
+            // Update object
+            const update = {
+                name: userName,
+                photo_url: photoUrl,
+                about,
+                gender,
+                gender_pref: genderPref,
+                games,
+            };
+
+            // Update the user info
+            await users.findOneAndUpdate(
+                { cognito_id: userId },
+                { $set: update }
+            );
+
+            return;
+        } catch (error) {
+            throw error;
+        }
+    }
+
     // Update like function
     async function updateLike({ userOneId, userTwoId }) {
         try {
@@ -275,5 +313,6 @@ module.exports = async function () {
         getAllMessages,
         getChillers,
         getChatboxes,
+        updateUser,
     };
 };
