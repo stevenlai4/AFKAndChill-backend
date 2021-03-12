@@ -243,6 +243,30 @@ module.exports = async function () {
         }
     }
 
+    // Get all chatboxes for the user
+    async function getChatboxes({ userId }) {
+        try {
+            // Check if the user exists
+            const existedUser = await users.findOne({
+                cognito_id: userId,
+            });
+            if (!existedUser) {
+                throw 'User does not exist';
+            }
+
+            // Fetching all chatboxes for the user
+            const response = await chatboxes
+                .find({
+                    $or: [{ user_one: userId }, { user_two: userId }],
+                })
+                .toArray();
+
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    }
+
     return {
         createUser,
         updateLike,
@@ -250,5 +274,6 @@ module.exports = async function () {
         createMessage,
         getAllMessages,
         getChillers,
+        getChatboxes,
     };
 };
