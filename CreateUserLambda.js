@@ -3,7 +3,6 @@ const afkAndChillDatabase = require('/opt/afkAndChillDatabase');
 exports.handler = async (event, context) => {
     context.callbackWaitsForEmptyEventLoop = false;
     const body = event.body;
-    const user = event.user;
 
     try {
         // Get the database
@@ -12,12 +11,13 @@ exports.handler = async (event, context) => {
         // Create a new user
         await database.createUser({
             ...body,
-            userId: user.id,
-            userName: user.name,
         });
 
         return {
             statusCode: 200,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+            },
             body: JSON.stringify({
                 successMsg: 'Create user successfully',
             }),
@@ -25,8 +25,11 @@ exports.handler = async (event, context) => {
     } catch (error) {
         return {
             statusCode: 500,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+            },
             body: JSON.stringify({
-                errorMsg: error,
+                errorMsg: error.message,
             }),
         };
     }
