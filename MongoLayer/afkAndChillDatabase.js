@@ -19,7 +19,7 @@ module.exports = async function () {
     // Create user function
     async function createUser({
         userId,
-        userName,
+        name,
         photoUrl,
         about,
         gender,
@@ -36,7 +36,7 @@ module.exports = async function () {
             // Insert a new user to the user table
             await users.insertOne({
                 cognito_id: userId,
-                name: userName,
+                name,
                 photo_url: photoUrl,
                 about,
                 gender,
