@@ -15,6 +15,9 @@ exports.handler = async (event, context) => {
 
         return {
             statusCode: 200,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+            },
             body: JSON.stringify({
                 chillers,
             }),
@@ -22,6 +25,9 @@ exports.handler = async (event, context) => {
     } catch (error) {
         return {
             statusCode: 500,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+            },
             body: JSON.stringify({
                 errorMsg: error.message,
             }),
