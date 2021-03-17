@@ -52,6 +52,21 @@ module.exports = async function () {
         }
     }
 
+    // Get user function
+    async function getUser({ userId }) {
+        try {
+            // Check if the user exists
+            const existedUser = await users.findOne({ cognito_id: userId });
+            if (!existedUser) {
+                throw 'User does not exist';
+            }
+
+            return existedUser;
+        } catch (error) {
+            throw error;
+        }
+    }
+
     // Update user function
     async function updateUser({
         userId,
@@ -308,6 +323,7 @@ module.exports = async function () {
 
     return {
         createUser,
+        getUser,
         updateLike,
         updateDislike,
         createMessage,
