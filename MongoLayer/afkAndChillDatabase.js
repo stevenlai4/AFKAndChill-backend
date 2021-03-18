@@ -152,8 +152,8 @@ module.exports = async function () {
             });
             if (isLikedBySecondUser) {
                 await chatboxes.insertOne({
-                    user_one: userOneId,
-                    user_two: userTwoId,
+                    user_one: firstExistedUser,
+                    user_two: secondExistedUser,
                 });
             }
 
@@ -227,9 +227,9 @@ module.exports = async function () {
             // Create a new message
             await messages.insertOne({
                 chat_id: existedChatBox._id,
-                user_id: userId,
                 message,
                 timestamp: Date.now(),
+                user: existedUser,
             });
 
             return;
@@ -311,7 +311,10 @@ module.exports = async function () {
             // Fetching all chatboxes for the user
             const response = await chatboxes
                 .find({
-                    $or: [{ user_one: userId }, { user_two: userId }],
+                    $or: [
+                        { 'user_one.cognito_id': userId },
+                        { 'user_two.cognito_id': userId },
+                    ],
                 })
                 .toArray();
 
