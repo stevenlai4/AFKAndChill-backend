@@ -2,7 +2,13 @@ const afkAndChillDatabase = require('/opt/afkAndChillDatabase');
 
 exports.handler = async (event, context) => {
     context.callbackWaitsForEmptyEventLoop = false;
-    const userId = event.user.id;
+    let userId = '';
+
+    if (event.body.id) {
+        userId = event.body.id;
+    } else {
+        userId = event.user.id;
+    }
 
     try {
         // Get the database
