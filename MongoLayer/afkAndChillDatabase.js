@@ -152,8 +152,8 @@ module.exports = async function () {
             });
             if (isLikedBySecondUser) {
                 await chatboxes.insertOne({
-                    user_one: firstExistedUser.cognito_id,
-                    user_two: secondExistedUser.cognito_id,
+                    user_one: firstExistedUser,
+                    user_two: secondExistedUser,
                 });
             }
 
@@ -229,7 +229,7 @@ module.exports = async function () {
                 chat_id: existedChatBox._id,
                 message,
                 timestamp: Date.now(),
-                user: existedUser.cognito_id,
+                user: existedUser,
             });
 
             return;
